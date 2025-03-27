@@ -17,6 +17,8 @@ This package lets you define PostgreSQL RLS policies, GRANT permissions, and sch
 - ✅ Intelligent diffs: only emit changed or missing policies and grants
 - ✅ Alembic integration with clean upgrade/downgrade support
 
+Warning: This package cannot currently diff policy using/with_check - If you change a policy, rename it!
+
 ---
 
 ## 📦 Installation

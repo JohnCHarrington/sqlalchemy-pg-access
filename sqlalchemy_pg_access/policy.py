@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Callable
 
 from sqlalchemy import Table, event, text
@@ -108,3 +110,80 @@ def execute_rls_policies(target, connection, **kw):
             dialect=connection.dialect, compile_kwargs={"literal_binds": True}
         )
         connection.execute(text(stmt))
+
+
+def get_existing_policies_as_objects(connection, table, dialect) -> list:
+    schema = table.schema or "public"
+
+    rows = connection.execute(
+        text("""
+        SELECT
+            pol.polname AS name,
+            pol.polcmd AS command,
+            pol.polroles AS role_oids,
+            pg_get_expr(pol.polqual, pol.polrelid) AS using_clause,
+            pg_get_expr(pol.polwithcheck, pol.polrelid) AS with_check_clause
+        FROM pg_policy pol
+        JOIN pg_class cls ON pol.polrelid = cls.oid
+        JOIN pg_namespace ns ON cls.relnamespace = ns.oid
+        WHERE cls.relname = :table AND ns.nspname = :schema
+    """),
+        {"table": table.name, "schema": schema},
+    ).fetchall()
+
+    # Resolve roles
+    role_map = {
+        row[0]: row[1]
+        for row in connection.execute(
+            text("SELECT oid, rolname FROM pg_roles")
+        ).fetchall()
+    }
+
+    policies = []
+
+    for row in rows:
+        roles = [role_map.get(oid) for oid in row[2] if oid in role_map]
+        policy = RLSPolicy(
+            name=row[0],
+            table=table,
+            commands=None
+            if row[1] == "*"
+            else [x.strip().upper() for x in row[1].split(",")],
+            roles=roles or None,
+        )
+        policy.using_clause = text(row[3]) if row[3] else None
+        policy.with_check_clause = text(row[4]) if row[4] else None
+        policies.append(policy)
+
+    return policies
+
+
+def diff_rls_policies(
+    existing: list[RLSPolicy], desired: list[RLSPolicy]
+) -> tuple[list[str], list[str], list[str]]:
+    """
+    Returns (to_create, to_replace, to_drop) — all are lists of policy names
+    """
+    to_create = []
+    to_replace = []
+    to_drop = []
+
+    existing_names = [x.name for x in existing]
+    desired_names = [x.name for x in desired]
+
+    for policy in desired:
+        if policy.name not in existing_names:
+            to_create.append(policy.name)
+        else:
+            existing_policy = next(x for x in existing if x.name == policy.name)
+            if (
+                existing_policy.commands != policy.commands
+                or existing_policy.roles != policy.roles
+            ):
+                to_replace.append(policy.name)
+
+    for policy in existing:
+        if policy.name not in desired_names:
+            to_drop.append(policy.name)
+
+    return to_create, to_replace, to_drop

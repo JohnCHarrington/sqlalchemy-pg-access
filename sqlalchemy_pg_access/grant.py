@@ -9,36 +9,28 @@ from sqlalchemy_pg_access.registry import register_grant
 
 @dataclass(frozen=True)
 class Grant:
-    actions: set[str]
-    roles: set[str]
+    action: str
+    role: str
 
 
 def grant_permissions(actions: list[str], to: list[str]):
     def decorator(cls):
-        register_grant(cls, Grant(actions, to))
+        for action in actions:
+            for role in to:
+                register_grant(cls, Grant(action, role))
         return cls
 
     return decorator
 
 
-def simplify_table_grants(grants: list[Grant]) -> list[Grant]:
-    grouped: dict[FrozenSet[str], set[str]] = defaultdict(set)
-
-    for grant in grants:
-        action_key = frozenset(action.upper() for action in grant.actions)
-        grouped[action_key].update(grant.roles)
-
-    # Construct sorted, normalized Grant objects
-    simplified = [
-        Grant(actions=set(sorted(action_key)), roles=set(sorted(roles)))
-        for action_key, roles in grouped.items()
+def get_existing_grants(connection, table_name, schema="public"):
+    superusers = [
+        row[0]
+        for row in connection.execute(
+            sa.text("SELECT rolname FROM pg_roles WHERE rolsuper")
+        ).fetchall()
     ]
 
-    # Sort output for deterministic ordering
-    return sorted(simplified, key=lambda g: (tuple(g.actions), tuple(g.roles)))
-
-
-def get_existing_grants(connection, table_name, schema="public"):
     query = sa.text("""
         SELECT grantee, privilege_type
         FROM information_schema.role_table_grants
@@ -47,13 +39,13 @@ def get_existing_grants(connection, table_name, schema="public"):
     """)
     rows = connection.execute(query, {"table": table_name, "schema": schema})
 
-    grants = [Grant(row["grantee"], row["privilege_type"].upper()) for row in rows]
+    grants = [Grant(row[1].upper(), row[0]) for row in rows if row[0] not in superusers]
 
-    return simplify_table_grants(grants)
+    return grants
 
 
-def grant_identity(grant: Grant) -> tuple[FrozenSet[str], FrozenSet[str]]:
-    return frozenset(grant.actions), frozenset(grant.roles)
+def grant_identity(grant: Grant) -> tuple[str, str]:
+    return grant.action, grant.role
 
 
 def diff_simplified_grants(
