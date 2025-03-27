@@ -4,7 +4,9 @@ from collections import defaultdict
 import sqlalchemy as sa
 
 from sqlalchemy_pg_access.grant import (
+    Grant,
     diff_simplified_grants,
+    find_sequence_names,
     get_existing_grants,
 )
 from sqlalchemy_pg_access.policy import (
@@ -51,21 +53,21 @@ def generate_process_revision_directives(
                 process_grant_schema_revision_directives(context, revision, directives)
             )
             migration_script.upgrade_ops.ops.extend(grant_schema_up)
-            migration_script.downgrade_ops.ops.extend(grant_schema_down)
+            migration_script.downgrade_ops.ops[:0] = grant_schema_down
 
         if grant_permissions:
             grant_up, grant_down = process_grant_revision_directives(
                 context, revision, directives
             )
             migration_script.upgrade_ops.ops.extend(grant_up)
-            migration_script.downgrade_ops.ops.extend(grant_down)
+            migration_script.downgrade_ops.ops[:0] = grant_down
 
         if rls:
             rls_up, rls_down = process_rls_revision_directives(
                 context, revision, directives
             )
             migration_script.upgrade_ops.ops.extend(rls_up)
-            migration_script.downgrade_ops.ops.extend(rls_down)
+            migration_script.downgrade_ops.ops[:0] = rls_down
 
         if schema:
             schema_up, schema_down = process_schema_revision_directives(
@@ -178,6 +180,35 @@ def process_grant_revision_directives(context, revision, directives):
                 grant_sql = f"GRANT {grant.action} ON {table.schema}.{table.name} TO {grant.role};"
                 downgrade_ops.append(ops.ExecuteSQLOp(sqltext=grant_sql))
 
+            sequence_grant_up, sequence_grant_down = get_sequence_grants(
+                table, desired_grants
+            )
+            upgrade_ops.extend(sequence_grant_up)
+            downgrade_ops.extend(sequence_grant_down)
+
+    return upgrade_ops, downgrade_ops
+
+
+def get_sequence_grants(table: sa.Table, grants: list[Grant]) -> tuple[list, list]:
+    upgrade_ops = []
+    downgrade_ops = []
+
+    sequence_names = find_sequence_names(table)
+    print("SEQUENCE NAMES", sequence_names)
+
+    for seq_name in sequence_names:
+        for grant in grants:
+            upgrade_ops.append(
+                ops.ExecuteSQLOp(
+                    sqltext=f"GRANT USAGE, SELECT ON SEQUENCE {seq_name} TO {grant.role};"
+                )
+            )
+            downgrade_ops.append(
+                ops.ExecuteSQLOp(
+                    sqltext=f"REVOKE USAGE, SELECT ON SEQUENCE {seq_name} FROM {grant.role};"
+                )
+            )
+
     return upgrade_ops, downgrade_ops
 
 
@@ -248,6 +279,42 @@ def rls_policy_ops(connection, table, dialect, metadata):
     upgrade_ops = []
     downgrade_ops = []
     full_table = f"{table.schema or 'public'}.{table.name}"
+
+    if len(desired):
+        has_rls = connection.execute(
+            sa.text("""
+            SELECT relrowsecurity
+            FROM pg_class
+            JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+            WHERE relname = :table AND nspname = :schema
+        """),
+            {"table": table.name, "schema": table.schema},
+        ).scalar()
+
+        if not has_rls:
+            upgrade_ops.append(
+                ops.ExecuteSQLOp(
+                    sqltext=f"ALTER TABLE {full_table} ENABLE ROW LEVEL SECURITY;"
+                )
+            )
+
+            downgrade_ops.append(
+                ops.ExecuteSQLOp(
+                    sqltext=f"ALTER TABLE {full_table} DISABLE ROW LEVEL SECURITY;"
+                )
+            )
+    elif len(existing):
+        upgrade_ops.append(
+            ops.ExecuteSQLOp(
+                sqltext=f"ALTER TABLE {full_table} DISABLE ROW LEVEL SECURITY;"
+            )
+        )
+
+        downgrade_ops.append(
+            ops.ExecuteSQLOp(
+                sqltext=f"ALTER TABLE {full_table} ENABLE ROW LEVEL SECURITY;"
+            )
+        )
 
     for name in to_create:
         upgrade_ops.append(ops.ExecuteSQLOp(sqltext=desired[name].compile(dialect)))

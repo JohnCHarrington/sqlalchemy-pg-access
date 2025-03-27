@@ -58,3 +58,23 @@ def diff_simplified_grants(
     to_revoke = [existing_set[key] for key in existing_set.keys() - desired_set.keys()]
 
     return to_grant, to_revoke
+
+
+def find_sequence_names(table: sa.Table) -> list[str]:
+    sequence_names = []
+    print(table.columns)
+
+    for column in table.columns:
+        if isinstance(column.default, sa.Sequence):
+            seq_name = column.default.name
+            if table.schema:
+                seq_name = f"{table.schema}.{seq_name}"
+            sequence_names.append(seq_name)
+
+        elif column.autoincrement and column.server_default is not None:
+            seq_name = f"{table.name}_{column.name}_seq"
+            if table.schema:
+                seq_name = f"{table.schema}.{seq_name}"
+            sequence_names.append(seq_name)
+
+    return sequence_names
