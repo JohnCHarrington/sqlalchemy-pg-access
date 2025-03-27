@@ -62,7 +62,6 @@ def diff_simplified_grants(
 
 def find_sequence_names(table: sa.Table) -> list[str]:
     sequence_names = []
-    print(table.columns)
 
     for column in table.columns:
         if isinstance(column.default, sa.Sequence):

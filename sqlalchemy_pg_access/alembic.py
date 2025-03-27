@@ -194,7 +194,6 @@ def get_sequence_grants(table: sa.Table, grants: list[Grant]) -> tuple[list, lis
     downgrade_ops = []
 
     sequence_names = find_sequence_names(table)
-    print("SEQUENCE NAMES", sequence_names)
 
     for seq_name in sequence_names:
         for grant in grants:
@@ -250,7 +249,6 @@ def process_grant_schema_revision_directives(context, revision, directives):
                         {"role": role, "schema": schema},
                     ).scalar()
                 except sa.exc.ProgrammingError as e:
-                    print(e)
                     if "InvalidSchemaName" in str(e):
                         existing_usage = False
 
