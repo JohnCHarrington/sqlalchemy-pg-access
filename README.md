@@ -74,6 +74,8 @@ class MyTable(SQLModel, table=True):
 When a model uses a custom schema:
 
 ```python
+
+@grant_permissions(["SELECT"], to=["app_user"])
 class MyTable(SQLModel, table=True):
     __tablename__ = "my_table"
     __table_args__ = {"schema": "my_schema"}
@@ -82,7 +84,8 @@ class MyTable(SQLModel, table=True):
 The migration will:
 
 - Create `my_schema` if it doesn't exist
-- Grant `USAGE` on `my_schema` to any roles with access to tables within it
+- Grant `USAGE` on `my_schema` to app_user
+- Grant `SELECT` on `my_table` to app_user
 
 ---
 
@@ -91,11 +94,13 @@ The migration will:
 ### 1. Enable in `env.py`
 
 ```python
-from sqlalchemy_pg_access.alembic_support import process_revision_directives
+from sqlalchemy_pg_access.alembic import generate_process_revision_directives
 
 context.configure(
     ...,
-    process_revision_directives=process_revision_directives,
+    process_revision_directives=generate_process_revision_directives(
+        rls=True, schema=True, grant_permissions=True, grant_schema_permissions=True
+    ),
 )
 ```
 
