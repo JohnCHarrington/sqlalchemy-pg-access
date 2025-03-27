@@ -1,14 +1,21 @@
 # sqlalchemy-pg-access
 
-PostgreSQL Row-Level Security (RLS) integration for SQLAlchemy, with optional Alembic autogeneration support.
+> ⚠️ **Disclaimer:** I needed this super fast, so a lot of it is written by ChatGPT, including this README! Take care in use, and any contributions are welcome.
+
+**Declarative access control for PostgreSQL using SQLAlchemy.**
+
+This package lets you define PostgreSQL RLS policies, GRANT permissions, and schema-level access directly in your SQLAlchemy models — with full Alembic autogeneration support.
 
 ---
 
 ## ✨ Features
 
-- ✅ Define Postgres RLS policies declaratively using decorators on sqlalchemy/sqlmodel classes
-- ✅ Optional Alembic integration via `[alembic]` extra
-- ✅ Automatic `CREATE POLICY` / `DROP POLICY` generation
+- ✅ Define PostgreSQL `CREATE POLICY` (RLS) in Python
+- ✅ Automatically `GRANT` table-level permissions to roles
+- ✅ Automatically `GRANT USAGE` on schemas
+- ✅ Automatically `CREATE SCHEMA` if missing
+- ✅ Intelligent diffs: only emit changed or missing policies and grants
+- ✅ Alembic integration with clean upgrade/downgrade support
 
 ---
 
@@ -28,33 +35,60 @@ uv pip install sqlalchemy-pg-access[alembic]
 
 ---
 
-## 🧱 Defining RLS Policies
+## 🧱 Usage
 
-### Option 2: `@rls_policy` Decorator
+### 🔐 Define a Row-Level Security (RLS) Policy
 
 ```python
-from sqlalchemy_pg_access.policy import rls_policy
+from sqlalchemy import func
+from sqlmodel import SQLModel, Field
+from sqlalchemy_pg_access.decorators import rls_policy
 
 @rls_policy(
-    name="read_only_own_docs",
+    name="read_policy",
     command="SELECT",
     roles=["app_user"],
-    using=lambda cls: cls.owner_id == func.current_setting("app.current_user_id").cast(int),
-    with_check=lambda cls: cls.owner_id == func.current_setting("app.current_user_id").cast(int)
+    using=lambda cls: cls.owner_id == func.current_setting("app.current_user_id").cast(int)
 )
-class UserDoc(SQLModel, table=True):
+class MyTable(SQLModel, table=True):
     id: int = Field(primary_key=True)
     owner_id: int
-    content: str
 ```
+
+---
+
+### 🔓 Grant Permissions to Roles
+
+```python
+from sqlalchemy_pg_access.decorators import grant_permissions
+
+@grant_permissions(["SELECT", "UPDATE"], to=["app_user", "readonly"])
+class MyTable(SQLModel, table=True):
+    ...
+```
+
+---
+
+### 🏗️ Automatically Create Schemas
+
+When a model uses a custom schema:
+
+```python
+class MyTable(SQLModel, table=True):
+    __tablename__ = "my_table"
+    __table_args__ = {"schema": "my_schema"}
+```
+
+The migration will:
+
+- Create `my_schema` if it doesn't exist
+- Grant `USAGE` on `my_schema` to any roles with access to tables within it
 
 ---
 
 ## ⚙️ Alembic Integration
 
-### 1. Enable the autogeneration hook
-
-In your Alembic `env.py`:
+### 1. Enable in `env.py`
 
 ```python
 from sqlalchemy_pg_access.alembic_support import process_revision_directives
@@ -65,33 +99,37 @@ context.configure(
 )
 ```
 
-### 2. Generate a migration
+### 2. Autogenerate a migration
 
 ```bash
-alembic revision --autogenerate -m "Add RLS policies"
+alembic revision --autogenerate -m "Add RLS and access controls"
 ```
 
-This will include `op.execute("CREATE POLICY ...")` statements in the migration.
+Alembic will generate:
 
-### 3. Downgrade support
-
-Each policy will generate a corresponding `DROP POLICY IF EXISTS` in the `downgrade()` block.
+- `CREATE SCHEMA` if needed
+- `GRANT USAGE ON SCHEMA ...`
+- `GRANT ... ON TABLE ...`
+- `CREATE POLICY ...`
+- Full `REVOKE` / `DROP POLICY` for downgrades
 
 ---
 
-## 🔍 How It Works
+## 🛠 Requirements
 
-- RLS policies are defined as SQLAlchemy `SchemaItem`s and compiled via `@compiles(RLSPolicy)`
-- They are registered to a global runtime registry
-- Alembic picks them up during autogeneration and injects the appropriate DDL
+- Python 3.10+
+- `sqlalchemy >= 2.0`
+- `alembic >= 1.12` (optional)
+- Supports `sqlmodel`, `declarative_base`, or plain SQLAlchemy tables
 
 ---
 
 ## 🧪 Roadmap
 
-- [ ] Policy diffing from live database
-- [ ] ALTER POLICY support
-- [ ] Policy sets and reusable templates
+- [ ] Optional: `CREATE ROLE` and `GRANT ROLE` management
+- [ ] `ALTER POLICY` diffs
+- [ ] Policy templates or reusables
+- [ ] CLI tool for auditing access control state
 
 ---
 
@@ -103,4 +141,4 @@ MIT
 
 ## 💬 Feedback
 
-Open an issue or pull request on GitHub! Contributions are welcome.
+Open an issue or pull request — feedback and contributions are very welcome!
