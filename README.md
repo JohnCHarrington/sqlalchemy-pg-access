@@ -1,6 +1,6 @@
 # sqlalchemy-pg-access
 
-> ⚠️ **Disclaimer:** I needed this super fast, so a lot of it is written by ChatGPT, including this README! Take care in use, and any contributions are welcome.
+> ⚠️ **Disclaimer:** I built this super fast, so a lot of it is written by ChatGPT, including this README! Take care in use, and any contributions are welcome.
 
 **Declarative access control for PostgreSQL using SQLAlchemy.**
 
