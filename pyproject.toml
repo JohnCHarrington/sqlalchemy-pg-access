@@ -1,0 +1,48 @@
+[project]
+name = "sqlalchemy-postgres-rls"
+version = "0.1.1"
+description = "Manage Postgres RLS policies in SQLAlchemy"
+authors = [{name="John Harrington", email="jharr92@gmail.com"}]
+readme = "README.md"
+licence = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0.39",
+]
+
+[project.optional-dependencies]
+alembic = [
+    "alembic>=1.15.1",
+]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # isort
+    "I",
+    # The following extra linters will be enabled at a later date
+    # pyupgrade
+    # "UP",
+    # flake8-bugbear
+    # "B",
+    # flake8-simplify
+    # "SIM",
+]
+ignore = ["E501"]
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["./"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "sqlmodel>=0.0.24",
+]
