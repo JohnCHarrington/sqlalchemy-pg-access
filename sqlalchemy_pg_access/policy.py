@@ -7,7 +7,7 @@ from sqlalchemy.schema import SchemaItem
 from sqlalchemy.sql.compiler import DDLCompiler
 from sqlalchemy.sql.elements import ClauseElement
 
-from sqlalchemy_postgres_rls.registry import get_policies_for_model, register_rls_policy
+from sqlalchemy_pg_access.registry import get_policies_for_model, register_rls_policy
 
 
 # Our fundamental class to hold an RLS policy definition.

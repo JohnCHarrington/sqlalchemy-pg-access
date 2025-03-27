@@ -3,11 +3,11 @@ from collections import defaultdict
 
 import sqlalchemy as sa
 
-from sqlalchemy_postgres_rls.grant import (
+from sqlalchemy_pg_access.grant import (
     diff_simplified_grants,
     get_existing_grants,
 )
-from sqlalchemy_postgres_rls.registry import (
+from sqlalchemy_pg_access.registry import (
     get_grants_for_table_name,
     get_policies_for_table_name,
 )

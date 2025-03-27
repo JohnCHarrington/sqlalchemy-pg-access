@@ -1,4 +1,4 @@
-# sqlalchemy-postgres-rls
+# sqlalchemy-pg-access
 
 PostgreSQL Row-Level Security (RLS) integration for SQLAlchemy, with optional Alembic autogeneration support.
 
@@ -17,13 +17,13 @@ PostgreSQL Row-Level Security (RLS) integration for SQLAlchemy, with optional Al
 ### Core only
 
 ```bash
-uv pip install sqlalchemy-postgres-rls
+uv pip install sqlalchemy-pg-access
 ```
 
 ### With Alembic integration
 
 ```bash
-uv pip install sqlalchemy-postgres-rls[alembic]
+uv pip install sqlalchemy-pg-access[alembic]
 ```
 
 ---
@@ -33,7 +33,7 @@ uv pip install sqlalchemy-postgres-rls[alembic]
 ### Option 2: `@rls_policy` Decorator
 
 ```python
-from sqlalchemy_postgres_rls.policy import rls_policy
+from sqlalchemy_pg_access.policy import rls_policy
 
 @rls_policy(
     name="read_only_own_docs",
@@ -57,7 +57,7 @@ class UserDoc(SQLModel, table=True):
 In your Alembic `env.py`:
 
 ```python
-from sqlalchemy_postgres_rls.alembic_support import process_revision_directives
+from sqlalchemy_pg_access.alembic_support import process_revision_directives
 
 context.configure(
     ...,

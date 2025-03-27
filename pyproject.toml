@@ -1,5 +1,5 @@
 [project]
-name = "sqlalchemy-postgres-rls"
+name = "sqlalchemy-pg-access"
 version = "0.1.1"
 description = "Manage Postgres RLS policies in SQLAlchemy"
 authors = [{name="John Harrington", email="jharr92@gmail.com"}]

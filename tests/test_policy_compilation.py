@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, Table, func
 from sqlalchemy.dialects.postgresql import dialect as pg_dialect
 
-from sqlalchemy_postgres_rls.policy import RLSPolicy
+from sqlalchemy_pg_access.policy import RLSPolicy
 
 
 def test_rls_policy_compile_basic(metadata):

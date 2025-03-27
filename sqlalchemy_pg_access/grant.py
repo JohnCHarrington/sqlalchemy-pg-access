@@ -4,7 +4,7 @@ from typing import FrozenSet
 
 import sqlalchemy as sa
 
-from sqlalchemy_postgres_rls.registry import register_grant
+from sqlalchemy_pg_access.registry import register_grant
 
 
 @dataclass(frozen=True)

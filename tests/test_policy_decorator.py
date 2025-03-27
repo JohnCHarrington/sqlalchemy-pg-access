@@ -1,8 +1,8 @@
 from sqlalchemy import Integer, func
 from sqlmodel import Field, SQLModel
 
-from sqlalchemy_postgres_rls.policy import rls_policy
-from sqlalchemy_postgres_rls.registry import get_policies_for_model
+from sqlalchemy_pg_access.policy import rls_policy
+from sqlalchemy_pg_access.registry import get_policies_for_model
 
 
 @rls_policy(
