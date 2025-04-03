@@ -239,6 +239,7 @@ def process_grant_schema_revision_directives(context, revision, directives):
             ).scalar()
 
             existing_roles = set()
+            existing_usage = False
             if schema_exists:
                 # Check if the role already has USAGE on the schema
                 try:
