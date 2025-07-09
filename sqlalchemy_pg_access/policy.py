@@ -142,13 +142,19 @@ def get_existing_policies_as_objects(connection, table, dialect) -> list:
     policies = []
 
     for row in rows:
+        # Fix: decode command value if it's bytes
+        command_value = row[1]
+        if isinstance(command_value, bytes):
+            command_value = command_value.decode("utf-8")
+    
+        commands = None if command_value == "*" else [x.strip().upper() for x in command_value.split(",")]
+    
         roles = [role_map.get(oid) for oid in row[2] if oid in role_map]
+    
         policy = RLSPolicy(
             name=row[0],
             table=table,
-            commands=None
-            if row[1] == "*"
-            else [x.strip().upper() for x in row[1].split(",")],
+            commands=commands,
             roles=roles or None,
         )
         policy.using_clause = text(row[3]) if row[3] else None
