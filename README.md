@@ -48,7 +48,7 @@ from sqlalchemy_pg_access.decorators import rls_policy
 
 @rls_policy(
     name="read_policy",
-    command="SELECT",
+    commands=["SELECT"],
     roles=["app_user"],
     using=lambda cls: cls.owner_id == func.current_setting("app.current_user_id").cast(int)
 )
